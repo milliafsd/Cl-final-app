@@ -74,6 +74,8 @@ def add_col_safe(table, col, typ):
 # ══════════════════════════════════════════
 # DATABASE SETUP
 # ══════════════════════════════════════════
+def hash_pw(pw):
+    return hashlib.sha256(pw.encode('utf-8')).hexdigest()
 def init_db():
     run("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -272,9 +274,6 @@ init_db()
 # ══════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════
-def hash_pw(pw):
-    return hashlib.sha256(pw.encode('utf-8')).hexdigest()
-
 def check_pw(plain, stored):
     """Support multiple hash formats for backward compat"""
     if not plain or not stored:
