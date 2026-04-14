@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Backups
+*.bak
+*_backup_*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NOTE: jamia_data.db is INCLUDED in repo intentionally
+# so data persists on Streamlit Cloud
