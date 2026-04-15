@@ -12,7 +12,7 @@ st.set_page_config(
 
 import pandas as pd
 from datetime import datetime, date, timedelta
-import sqlite3, hashlib, os, io, zipfile
+import sqlite3, hashlib, os, io, zipfile, shutil  # <-- shutil شامل کیا
 
 # ════════════════════════════════════════════
 # DATABASE
@@ -49,6 +49,37 @@ def add_col(t, c, typ):
     if not col_ok(t, c):
         try: wr(f"ALTER TABLE {t} ADD COLUMN {c} {typ}")
         except: pass
+
+def ensure_columns():
+    """تمام ٹیبلز میں ضروری کالمز کی موجودگی یقینی بنائیں"""
+    # users
+    for col, typ in [('dept','TEXT'),('phone','TEXT'),('address','TEXT'),
+                     ('id_card','TEXT'),('joining_date','TEXT'),('is_active','INTEGER DEFAULT 1')]:
+        add_col('users', col, typ)
+    # students
+    for col, typ in [('mother_name','TEXT'),('exit_date','TEXT'),('exit_reason','TEXT'),
+                     ('class_name','TEXT'),('section','TEXT'),('is_active','INTEGER DEFAULT 1')]:
+        add_col('students', col, typ)
+    # hifz_records
+    for col, typ in [('sabaq_lines','INTEGER DEFAULT 0'),('sq_atkan','INTEGER DEFAULT 0'),
+                     ('manzil_atkan','INTEGER DEFAULT 0'),('cleanliness','TEXT'),
+                     ('grade','TEXT'),('note','TEXT')]:
+        add_col('hifz_records', col, typ)
+    # qaida_records
+    for col, typ in [('cleanliness','TEXT'),('note','TEXT')]:
+        add_col('qaida_records', col, typ)
+    # general_records
+    for col, typ in [('cleanliness','TEXT'),('note','TEXT')]:
+        add_col('general_records', col, typ)
+    # exams
+    for col, typ in [('from_para','INTEGER'),('to_para','INTEGER'),('book_name','TEXT'),
+                     ('amount_read','TEXT'),('end_date','TEXT'),('total_days','INTEGER'),
+                     ('q1','INTEGER'),('q2','INTEGER'),('q3','INTEGER'),('q4','INTEGER'),('q5','INTEGER'),
+                     ('total','INTEGER'),('grade','TEXT'),('status','TEXT')]:
+        add_col('exams', col, typ)
+    # passed_paras
+    for col, typ in [('book_name','TEXT'),('grade','TEXT'),('marks','INTEGER')]:
+        add_col('passed_paras', col, typ)
 
 def setup():
     wr("""CREATE TABLE IF NOT EXISTS users(
@@ -220,12 +251,16 @@ def setup():
         action TEXT DEFAULT '',
         details TEXT DEFAULT '',
         created_at TEXT DEFAULT(datetime('now','localtime')))""")
+
     # Default admin
     if not rd("SELECT id FROM users WHERE username='admin'", one=True):
-       wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
-          "admin", hp("jamia123"), "admin", "انتظامیہ") # یہاں آخر میں بریکٹ ) لگا دی گئی ہے
+        wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
+           ("admin", hp("jamia123"), "admin", "انتظامیہ"))
 
-st.stop()
+    ensure_columns()  # <-- کالم چیک
+
+setup()
+
 # ════════════════════════════════════════════
 # HELPERS
 # ════════════════════════════════════════════
@@ -730,18 +765,6 @@ def chip(g):
     c = GCLS.get(g,"gg")
     return f"<span class='ch {c}'>{g}</span>"
 
-def admin_row(table, row_id, extra_del_msg=""):
-    """ایڈمن ترمیم/حذف بٹن"""
-    if not IS_ADMIN: return
-    c1,c2 = st.columns(2)
-    with c2:
-        if st.button("🗑️ حذف کریں", key=f"del_{table}_{row_id}",
-                     use_container_width=True):
-            wr(f"DELETE FROM {table} WHERE id=?", (row_id,))
-            audit(st.session_state.username, f"Delete {table}", row_id)
-            st.success("✅ حذف!")
-            st.rerun()
-
 # ════════════════════════════════════════════
 # ████  ADMIN DASHBOARD  ████
 # ════════════════════════════════════════════
@@ -829,7 +852,6 @@ elif pg=="daily" and IS_ADMIN:
     if combined:
         df=pd.DataFrame(combined)
         st.success(f"✅ کل {len(df)} ریکارڈ")
-        # Admin: per-record delete
         if IS_ADMIN:
             st.info("کسی ریکارڈ کو حذف کرنے کے لیے ID لکھیں:")
             with st.form("del_rec"):
@@ -973,7 +995,6 @@ elif pg=="para" and IS_ADMIN:
         if passed:
             df=pd.DataFrame(passed)
             st.dataframe(df,use_container_width=True,hide_index=True)
-            # Admin delete passed para
             if IS_ADMIN:
                 with st.form("del_para"):
                     di=st.number_input("حذف ID",1,step=1)
@@ -1251,7 +1272,6 @@ elif pg=="notifs":
                            (t_,m_,tg,st.session_state.username))
                         st.success("✅!"); st.rerun()
                     else: st.error("ضروری فیلڈز")
-        # Admin: delete notification
         with st.expander("🗑️ اعلان حذف کریں"):
             with st.form("del_notif"):
                 di=st.number_input("ID",1,step=1)
@@ -1453,7 +1473,6 @@ elif pg=="backup" and IS_ADMIN:
         upf=st.file_uploader(".db فائل",type=["db"])
         if upf:
             if st.checkbox("میں سمجھتا/سمجھتی ہوں") and st.button("🔄 ری سٹور"):
-                import shutil
                 if os.path.exists(DB): shutil.copy(DB,DB+".bak")
                 with open(DB,"wb") as f: f.write(upf.getbuffer())
                 st.success("✅ ری سٹور مکمل!"); st.rerun()
@@ -1486,7 +1505,7 @@ elif pg=="home" and not IS_ADMIN:
             st.markdown(f"""<div class="ni"><h5>{n['title']}</h5><p>{n['message'][:100]}</p></div>""",unsafe_allow_html=True)
 
 # ════════════════════════════════════════════
-# ████  TEACHER ENTRY — ICON CARD STYLE  ████
+# ████  TEACHER ENTRY — IMPROVED  ████
 # ════════════════════════════════════════════
 elif pg=="entry" and not IS_ADMIN:
     sh("📝","روزانہ سبق اندراج","طالب علم کا آئیکن دبائیں")
@@ -1504,7 +1523,6 @@ elif pg=="entry" and not IS_ADMIN:
 
     # ── Student Icon Grid ──
     st.markdown(f"**{len(my_studs)} طلباء — کسی کا بٹن دبائیں:**")
-    # Check which have records today
     done_ids=set()
     if dept=="حفظ":
         for s in my_studs:
@@ -1515,7 +1533,6 @@ elif pg=="entry" and not IS_ADMIN:
             if rd("SELECT id FROM qaida_records WHERE student_id=? AND rec_date=?",(s['id'],str(entry_date)),one=True):
                 done_ids.add(s['id'])
 
-    # Render icon grid using columns
     COLS=4
     chunks=[my_studs[i:i+COLS] for i in range(0,len(my_studs),COLS)]
     sel=st.session_state.sel_student
@@ -1526,12 +1543,6 @@ elif pg=="entry" and not IS_ADMIN:
             is_done=s['id'] in done_ids
             is_sel=sel==s['id']
             done_txt="✅" if is_done else "📝"
-            badge_style=("background:#16a34a;" if is_done else
-                        "background:#0a5c3c;" if is_sel else
-                        "background:#0d7a52;")
-            lbl_col="#fff" if is_sel else ("#065f46" if is_done else "#1a2e25")
-            card_style=("background:linear-gradient(145deg,#e6f4ee,#c5e8d8);border:2.5px solid #16a34a;" if is_done else
-                        f"background:linear-gradient(145deg,{'#0a5c3c' if is_sel else '#fff'},{'#0d7a52' if is_sel else '#f0f9f5'});border:2.5px solid {'#0a5c3c' if is_sel else '#ddeae3'};")
             with col:
                 if st.button(f"{done_txt}\n{s['name'][:8]}\n{s['father_name'][:6]}",
                              key=f"stu_{s['id']}",use_container_width=True):
@@ -1566,6 +1577,7 @@ elif pg=="entry" and not IS_ADMIN:
                 sn=sc1.checkbox("ناغہ",key=f"sn_{k}"); sy=sc2.checkbox("یاد نہیں",key=f"sy_{k}")
                 if sn or sy:
                     s_nagha=1; sabaq_txt="ناغہ" if sn else "یاد نہیں"
+                    s_lines=0  # سطر نہیں پوچھی جائے گی
                 else:
                     rc1,rc2,rc3=st.columns(3)
                     sur=rc1.selectbox("سورت",SURAHS,key=f"sr_{k}")
@@ -1579,6 +1591,7 @@ elif pg=="entry" and not IS_ADMIN:
                 sqn_=sc1.checkbox("ناغہ",key=f"sqn_{k}"); sqy=sc2.checkbox("یاد نہیں",key=f"sqy_{k}")
                 if sqn_ or sqy:
                     sq_nagha=1; sq_txt="ناغہ" if sqn_ else "یاد نہیں"
+                    sq_atk=sq_mis=0
                 else:
                     rc1,rc2,rc3,rc4=st.columns(4)
                     sqp=rc1.selectbox("پارہ",PARAS,key=f"sqp_{k}")
@@ -1592,6 +1605,7 @@ elif pg=="entry" and not IS_ADMIN:
                 mn_=sc1.checkbox("ناغہ",key=f"mn_{k}"); my_=sc2.checkbox("یاد نہیں",key=f"my_{k}")
                 if mn_ or my_:
                     m_nagha=1; m_txt="ناغہ" if mn_ else "یاد نہیں"
+                    m_atk=m_mis=0
                 else:
                     rc1,rc2,rc3,rc4=st.columns(4)
                     mp=rc1.selectbox("پارہ",PARAS,key=f"mp_{k}")
@@ -1611,6 +1625,8 @@ elif pg=="entry" and not IS_ADMIN:
                 ln=st.text_input("تختی/سبق نمبر",key=f"ln_{k}")
                 lines=st.number_input("لائنیں",0,key=f"lns_{k}")
                 det=st.text_area("تفصیل",key=f"det_{k}")
+            else:
+                ln=lines=det=""
 
             # ── GENERAL ──
             elif dept in["درسِ نظامی","عصری تعلیم"] and att=="حاضر":
@@ -1618,6 +1634,8 @@ elif pg=="entry" and not IS_ADMIN:
                 les_=st.text_area("سبق",key=f"les_{k}")
                 hw_=st.text_input("ہوم ورک",key=f"hw_{k}")
                 prf_=st.select_slider("کارکردگی",["بہت بہتر","بہتر","مناسب","کمزور"],key=f"prf_{k}")
+            else:
+                sub_=les_=hw_=prf_=""
 
             note=st.text_input("نوٹ (اختیاری)",key=f"nt_{k}")
 
@@ -1636,24 +1654,17 @@ elif pg=="entry" and not IS_ADMIN:
                         sq_txt,sq_nagha,sq_atk,sq_mis,
                         m_txt,m_nagha,m_atk,m_mis,cln,gr,note))
                 elif dept=="قاعدہ":
-                    ln_v=st.session_state.get(f"ln_{k}","")
-                    lns_v=st.session_state.get(f"lns_{k}",0)
-                    det_v=st.session_state.get(f"det_{k}","")
                     wr("""INSERT INTO qaida_records
                           (rec_date,student_id,teacher,attendance,lesson_no,total_lines,details,cleanliness,note)
                           VALUES(?,?,?,?,?,?,?,?,?)""",
                        (str(entry_date),s_data['id'],st.session_state.username,
-                        att,ln_v,lns_v,det_v,cln,note))
+                        att,ln,lines,det,cln,note))
                 else:
-                    sub_v=st.session_state.get(f"sub_{k}","")
-                    les_v=st.session_state.get(f"les_{k}","")
-                    hw_v=st.session_state.get(f"hw_{k}","")
-                    prf_v=st.session_state.get(f"prf_{k}","")
                     wr("""INSERT INTO general_records
                           (rec_date,student_id,teacher,dept,attendance,subject,lesson,homework,performance,cleanliness,note)
                           VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
                        (str(entry_date),s_data['id'],st.session_state.username,dept,
-                        att,sub_v,les_v,hw_v,prf_v,cln,note))
+                        att,sub_,les_,hw_,prf_,cln,note))
                 audit(st.session_state.username,"Entry",f"{s_data['name']}{entry_date}")
                 st.success(f"✅ {s_data['name']} محفوظ!")
                 st.session_state.sel_student=None
