@@ -12,7 +12,7 @@ st.set_page_config(
 
 import pandas as pd
 from datetime import datetime, date, timedelta
-import sqlite3, hashlib, os, io, zipfile, shutil  # <-- shutil شامل کیا
+import sqlite3, hashlib, os, io, zipfile, shutil
 
 # ════════════════════════════════════════════
 # DATABASE
@@ -1566,83 +1566,97 @@ elif pg=="entry" and not IS_ADMIN:
             att=st.radio("حاضری",ATT,key=f"att_{k}",horizontal=True)
             cln=st.selectbox("صفائی",CLEAN,key=f"cln_{k}")
 
+            # Initialize all variables to avoid UnboundLocalError
             s_nagha=sq_nagha=m_nagha=0
             sabaq_txt=sq_txt=m_txt=""
             s_lines=sq_atk=sq_mis=m_atk=m_mis=0
+            ln=lines=det=""
+            sub_=les_=hw_=prf_=""
+            gr=""
 
-            # ── HIFZ ──
-            if dept=="حفظ" and att=="حاضر":
-                st.markdown("**📖 سبق**")
-                sc1,sc2=st.columns(2)
-                sn=sc1.checkbox("ناغہ",key=f"sn_{k}"); sy=sc2.checkbox("یاد نہیں",key=f"sy_{k}")
-                if sn or sy:
-                    s_nagha=1; sabaq_txt="ناغہ" if sn else "یاد نہیں"
-                    s_lines=0  # سطر نہیں پوچھی جائے گی
-                else:
-                    rc1,rc2,rc3=st.columns(3)
-                    sur=rc1.selectbox("سورت",SURAHS,key=f"sr_{k}")
-                    af=rc2.text_input("آیت سے",key=f"af_{k}")
-                    at_=rc3.text_input("آیت تک",key=f"at_{k}")
-                    s_lines=st.number_input("ستر",0,50,0,key=f"sl_{k}")
-                    sabaq_txt=f"{sur}:{af}-{at_}"
+            # حاضری کی بنیاد پر فارم دکھائیں
+            if att == "حاضر":
+                if dept == "حفظ":
+                    st.markdown("**📖 سبق**")
+                    sc1, sc2 = st.columns(2)
+                    sn = sc1.checkbox("ناغہ", key=f"sn_{k}")
+                    sy = sc2.checkbox("یاد نہیں", key=f"sy_{k}")
+                    if sn or sy:
+                        s_nagha = 1
+                        sabaq_txt = "ناغہ" if sn else "یاد نہیں"
+                        s_lines = 0
+                    else:
+                        rc1, rc2, rc3 = st.columns(3)
+                        sur = rc1.selectbox("سورت", SURAHS, key=f"sr_{k}")
+                        af = rc2.text_input("آیت سے", key=f"af_{k}")
+                        at_ = rc3.text_input("آیت تک", key=f"at_{k}")
+                        s_lines = st.number_input("ستر", 0, 50, 0, key=f"sl_{k}")
+                        sabaq_txt = f"{sur}:{af}-{at_}"
 
-                st.markdown("**📚 سبقی**")
-                sc1,sc2=st.columns(2)
-                sqn_=sc1.checkbox("ناغہ",key=f"sqn_{k}"); sqy=sc2.checkbox("یاد نہیں",key=f"sqy_{k}")
-                if sqn_ or sqy:
-                    sq_nagha=1; sq_txt="ناغہ" if sqn_ else "یاد نہیں"
-                    sq_atk=sq_mis=0
-                else:
-                    rc1,rc2,rc3,rc4=st.columns(4)
-                    sqp=rc1.selectbox("پارہ",PARAS,key=f"sqp_{k}")
-                    sqm=rc2.selectbox("مقدار",MIQDAR,key=f"sqm_{k}")
-                    sq_atk=rc3.number_input("اٹکن",0,key=f"sqat_{k}")
-                    sq_mis=rc4.number_input("غلطی",0,key=f"sqms_{k}")
-                    sq_txt=f"{sqp}:{sqm}"
+                    st.markdown("**📚 سبقی**")
+                    sc1, sc2 = st.columns(2)
+                    sqn_ = sc1.checkbox("ناغہ", key=f"sqn_{k}")
+                    sqy = sc2.checkbox("یاد نہیں", key=f"sqy_{k}")
+                    if sqn_ or sqy:
+                        sq_nagha = 1
+                        sq_txt = "ناغہ" if sqn_ else "یاد نہیں"
+                        sq_atk = sq_mis = 0
+                    else:
+                        rc1, rc2, rc3, rc4 = st.columns(4)
+                        sqp = rc1.selectbox("پارہ", PARAS, key=f"sqp_{k}")
+                        sqm = rc2.selectbox("مقدار", MIQDAR, key=f"sqm_{k}")
+                        sq_atk = rc3.number_input("اٹکن", 0, key=f"sqat_{k}")
+                        sq_mis = rc4.number_input("غلطی", 0, key=f"sqms_{k}")
+                        sq_txt = f"{sqp}:{sqm}"
 
-                st.markdown("**🌙 منزل**")
-                sc1,sc2=st.columns(2)
-                mn_=sc1.checkbox("ناغہ",key=f"mn_{k}"); my_=sc2.checkbox("یاد نہیں",key=f"my_{k}")
-                if mn_ or my_:
-                    m_nagha=1; m_txt="ناغہ" if mn_ else "یاد نہیں"
-                    m_atk=m_mis=0
-                else:
-                    rc1,rc2,rc3,rc4=st.columns(4)
-                    mp=rc1.selectbox("پارہ",PARAS,key=f"mp_{k}")
-                    mm_=rc2.selectbox("مقدار",MIQDAR,key=f"mm_{k}")
-                    m_atk=rc3.number_input("اٹکن",0,key=f"mat_{k}")
-                    m_mis=rc4.number_input("غلطی",0,key=f"mms_{k}")
-                    m_txt=f"{mp}:{mm_}"
+                    st.markdown("**🌙 منزل**")
+                    sc1, sc2 = st.columns(2)
+                    mn_ = sc1.checkbox("ناغہ", key=f"mn_{k}")
+                    my_ = sc2.checkbox("یاد نہیں", key=f"my_{k}")
+                    if mn_ or my_:
+                        m_nagha = 1
+                        m_txt = "ناغہ" if mn_ else "یاد نہیں"
+                        m_atk = m_mis = 0
+                    else:
+                        rc1, rc2, rc3, rc4 = st.columns(4)
+                        mp = rc1.selectbox("پارہ", PARAS, key=f"mp_{k}")
+                        mm_ = rc2.selectbox("مقدار", MIQDAR, key=f"mm_{k}")
+                        m_atk = rc3.number_input("اٹکن", 0, key=f"mat_{k}")
+                        m_mis = rc4.number_input("غلطی", 0, key=f"mms_{k}")
+                        m_txt = f"{mp}:{mm_}"
 
-                gr=grade_hifz(att,s_nagha,sq_nagha,m_nagha,sq_mis,m_mis)
-                st.markdown(f"**درجہ:** {chip(gr)}",unsafe_allow_html=True)
+                    gr = grade_hifz(att, s_nagha, sq_nagha, m_nagha, sq_mis, m_mis)
+                    st.markdown(f"**درجہ:** {chip(gr)}", unsafe_allow_html=True)
 
-            elif dept=="حفظ":
-                gr="غیر حاضر" if att=="غیر حاضر" else "رخصت"
+                elif dept == "قاعدہ":
+                    ln = st.text_input("تختی/سبق نمبر", key=f"ln_{k}")
+                    lines = st.number_input("لائنیں", 0, key=f"lns_{k}")
+                    det = st.text_area("تفصیل", key=f"det_{k}")
 
-            # ── QAIDA ──
-            elif dept=="قاعدہ" and att=="حاضر":
-                ln=st.text_input("تختی/سبق نمبر",key=f"ln_{k}")
-                lines=st.number_input("لائنیں",0,key=f"lns_{k}")
-                det=st.text_area("تفصیل",key=f"det_{k}")
+                elif dept in ["درسِ نظامی", "عصری تعلیم"]:
+                    sub_ = st.text_input("مضمون/کتاب", key=f"sub_{k}")
+                    les_ = st.text_area("سبق", key=f"les_{k}")
+                    hw_ = st.text_input("ہوم ورک", key=f"hw_{k}")
+                    prf_ = st.select_slider("کارکردگی",
+                                            ["بہت بہتر", "بہتر", "مناسب", "کمزور"],
+                                            key=f"prf_{k}")
+
             else:
-                ln=lines=det=""
-
-            # ── GENERAL ──
-            elif dept in["درسِ نظامی","عصری تعلیم"] and att=="حاضر":
-                sub_=st.text_input("مضمون/کتاب",key=f"sub_{k}")
-                les_=st.text_area("سبق",key=f"les_{k}")
-                hw_=st.text_input("ہوم ورک",key=f"hw_{k}")
-                prf_=st.select_slider("کارکردگی",["بہت بہتر","بہتر","مناسب","کمزور"],key=f"prf_{k}")
-            else:
-                sub_=les_=hw_=prf_=""
+                # جب حاضری "حاضر" نہ ہو
+                if dept == "حفظ":
+                    gr = "غیر حاضر" if att == "غیر حاضر" else "رخصت"
+                # دیگر شعبوں کے لیے کوئی اضافی فیلڈ نہیں
 
             note=st.text_input("نوٹ (اختیاری)",key=f"nt_{k}")
 
             c1,c2=st.columns(2)
             if c1.button(f"💾 {s_data['name']} محفوظ کریں",use_container_width=True):
                 if dept=="حفظ":
-                    gr=grade_hifz(att,s_nagha,sq_nagha,m_nagha,sq_mis,m_mis)
+                    # Ensure grade is calculated if not already
+                    if att == "حاضر" and not gr:
+                        gr = grade_hifz(att, s_nagha, sq_nagha, m_nagha, sq_mis, m_mis)
+                    elif att != "حاضر":
+                        gr = "غیر حاضر" if att == "غیر حاضر" else "رخصت"
                     wr("""INSERT INTO hifz_records
                           (rec_date,student_id,teacher,attendance,sabaq,sabaq_lines,sabaq_nagha,
                            sq_text,sq_nagha,sq_atkan,sq_mistakes,
