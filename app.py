@@ -255,7 +255,7 @@ def setup():
     # Default admin
     if not rd("SELECT id FROM users WHERE username='admin'", one=True):
         wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
-           ("admin", hp("jamia123"), "admin", "انتظامیہ"))
+           ("admin", ("jamia123"), "admin", "انتظامیہ"))
 
     ensure_columns()  # <-- کالم چیک
 
