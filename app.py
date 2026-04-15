@@ -220,12 +220,12 @@ def setup():
         action TEXT DEFAULT '',
         details TEXT DEFAULT '',
         created_at TEXT DEFAULT(datetime('now','localtime')))""")
-
     # Default admin
     if not rd("SELECT id FROM users WHERE username='admin'", one=True):
-        wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
-           "admin", hp"jamia123", "admin", "انتظامیہ"
-st.stop() 
+       wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
+          "admin", hp("jamia123"), "admin", "انتظامیہ") # یہاں آخر میں بریکٹ ) لگا دی گئی ہے
+
+st.stop()
 # ════════════════════════════════════════════
 # HELPERS
 # ════════════════════════════════════════════
