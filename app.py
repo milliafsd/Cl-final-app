@@ -224,9 +224,7 @@ def setup():
     # Default admin
     if not rd("SELECT id FROM users WHERE username='admin'", one=True):
         wr("INSERT INTO users(username,password,role,dept)VALUES(?,?,?,?)",
-           ("admin", hp("jamia123"), "admin", "انتظامیہ"))
-
-setup()
+           ("admin", hp("jamia123"), "admin", "انتظامیہ" 
 
 # ════════════════════════════════════════════
 # HELPERS
