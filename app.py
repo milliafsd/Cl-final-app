@@ -26,9 +26,6 @@ import zipfile
 # ══════════════════════════════════════════
 # DATABASE - PERSISTENT PATH
 # ══════════════════════════════════════════
-# Streamlit Cloud پر /tmp persistent نہیں
-# لیکن اگر repo میں data/ folder ہو تو کام کرتا ہے
-# بہترین طریقہ: working directory میں رکھیں
 DB_PATH = "jamia_data.db"
 
 def get_conn():
@@ -72,10 +69,11 @@ def add_col_safe(table, col, typ):
             pass
 
 # ══════════════════════════════════════════
-# DATABASE SETUP
+# DATABASE SETUP - hash_pw DEFINED FIRST
 # ══════════════════════════════════════════
 def hash_pw(pw):
     return hashlib.sha256(pw.encode('utf-8')).hexdigest()
+
 def init_db():
     run("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,13 +276,10 @@ def check_pw(plain, stored):
     """Support multiple hash formats for backward compat"""
     if not plain or not stored:
         return False
-    # New hash
     if hash_pw(plain) == stored:
         return True
-    # Old hash (no salt)
     if hashlib.sha256(plain.encode()).hexdigest() == stored:
         return True
-    # Plain text (legacy)
     if plain == stored:
         return True
     return False
@@ -798,7 +793,6 @@ def go(page):
 # LOGIN PAGE
 # ══════════════════════════════════════════
 if not st.session_state.logged_in:
-    # Use st.columns to center the login form
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
         st.markdown("---")
@@ -898,21 +892,16 @@ else:
         ("password",  "🔑", "پاسورڈ"),
     ]
 
-# Render nav as icon grid
 cols_per_row = 5 if IS_ADMIN else 4
 nav_rows = [NAV[i:i+cols_per_row] for i in range(0, len(NAV), cols_per_row)]
 
 for row in nav_rows:
     cols = st.columns(len(row))
     for col, (pid, ico, lbl) in zip(cols, row):
-        active_style = ("background:linear-gradient(135deg,#0a5c3c,#0d7a52);"
-                        "color:white;border-color:#0a5c3c;") if pg == pid else ""
-        lbl_color = "color:white" if pg == pid else "color:#1a2e25"
         with col:
             if st.button(f"{ico}\n{lbl}", key=f"nav_{pid}", use_container_width=True):
                 go(pid)
 
-# Logout button
 logout_c = st.columns([6, 1])[1]
 with logout_c:
     if st.button("🚪 آؤٹ", use_container_width=True):
@@ -1800,7 +1789,6 @@ elif pg == "backup" and IS_ADMIN:
 # ══════════════════════════════════════════
 elif pg == "home" and not IS_ADMIN:
     sec("🏠", f"خوش آمدید، {st.session_state.username}!", "استاد پورٹل")
-    # My students count
     my_s = scalar("SELECT COUNT(*) FROM students WHERE teacher=? AND is_active=1",
                   (st.session_state.username,))
     my_recs = scalar("SELECT COUNT(*) FROM hifz_records WHERE teacher=?",
@@ -1823,7 +1811,6 @@ elif pg == "home" and not IS_ADMIN:
         <div class="met-val">{my_lv}</div><div class="met-lbl">پینڈنگ رخصت</div></div>
     </div>""", unsafe_allow_html=True)
 
-    # Recent notifications
     notifs = fetch("""SELECT title, message FROM notifications
                      WHERE target IN ('تمام','اساتذہ') ORDER BY created_at DESC LIMIT 5""")
     if notifs:
